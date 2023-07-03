@@ -85,10 +85,6 @@ while True:
                     log("Post is something wack.")
                 else:
                     log("Post checkable!")
-                    
-                    # /html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[4]/div[1]/div[4]/div[5]/div/div/div[3]/div[2]/div[2]/a
-                    # /html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[4]/div[1]/div[4]/div[5]/div/div/div[3]/div[2]/div[2]/a/div/h3
-                    
                     link, title_dir = None, None
                     try:
                         link = driver.find_element(By.XPATH, xpath + stub + "/div[3]/div[2]/div[2]/a")
