@@ -23,7 +23,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as Ec
 
 ### Setup stufff
-post_list = []
 def log(str):
     print("[Scraper] " + str)
     time.sleep(0.75)
@@ -32,13 +31,13 @@ def clamp(num, min_value, max_value):
 
 ### Create loop
 last_day = None
-last_day = datetime.datetime.now().date()
 
 while True:
     today = datetime.datetime.now().date()
     if today != last_day:
         last_day = today
         # BEGIN!!!
+        post_list = []
         
         options = Options()
         options.add_experimental_option("detach", True)
@@ -50,9 +49,9 @@ while True:
         reddit = Downloader(max_q = True)
         videos_per = 1
         links = [
-            "https://www.reddit.com/r/Damnthatsinteresting",
-            "https://www.reddit.com/r/BeAmazed",
-            "https://www.reddit.com/r/nextfuckinglevel"
+            "https://www.reddit.com/r/Damnthatsinteresting/",
+            "https://www.reddit.com/r/BeAmazed/",
+            "https://www.reddit.com/r/nextfuckinglevel/"
         ]
 
         ### Begin scraping reddit links ^^^
@@ -60,10 +59,17 @@ while True:
         for j in range(len(links)):
             curr_link = links[j]
             
-            driver.get(curr_link + "/?t=day")
-            body = WebDriverWait(driver, 30).until(
-                Ec.presence_of_element_located((By.CLASS_NAME, "rpBJOHq2PR60pnwJlUyP0"))
-            )
+            driver.get(curr_link + "top/?t=day")
+            body = None
+            while body == None:
+                try:
+                    body = WebDriverWait(driver, 20).until(
+                        Ec.presence_of_element_located((By.CLASS_NAME, "rpBJOHq2PR60pnwJlUyP0"))
+                    )
+                except:
+                    driver.refresh()
+                    time.sleep(10)
+                
             log("Found body in " + str(j) + ": " + curr_link)
             
             i = 0
@@ -85,39 +91,47 @@ while True:
                     log("Post is something wack.")
                 else:
                     log("Post checkable!")
-                    link, title_dir = None, None
                     try:
-                        link = driver.find_element(By.XPATH, xpath + stub + "/div[3]/div[2]/div[2]/a")
-                        title_dir = "/div[3]/div[2]/div[2]/a/div/h3"
-                        log("Post has a Tag.")
+                        link, title_dir = None, None
+                        try:
+                            link = driver.find_element(By.XPATH, xpath + stub + "/div[3]/div[2]/div[2]/a")
+                            title_dir = "/div[3]/div[2]/div[2]/a/div/h3"
+                            log("Post has a Tag.")
+                        except:
+                            link = driver.find_element(By.XPATH, xpath + stub + "/div[3]/div[2]/div[1]/a")
+                            title_dir = "/div[3]/div[2]/div[1]/a/div/h3"
+                            log("Post has NO Tag.")
+            
+                        reddit.url = link.get_attribute("href")
+                        try:
+                            num = str(len(post_list))
+                            name = "download_" + num + ".mp4"
+                            
+                            # cheeky redvid name override :)
+                            reddit.download(name)   
+                        except:
+                            log("Failed! Wrong post type...")
+                            
+                        if os.path.exists(name):
+                            log("Video extracted!")
+                            
+                            title = driver.find_element(By.XPATH, xpath + stub + title_dir)
+                            post_list.append({
+                                "title": title.text,
+                                "download": name,
+                                "upload": "upload_" + num + ".mp4",
+                            })
+                            
+                            vids += 1
+                        else:
+                            log("Failed! Video could not download!")
                     except:
-                        link = driver.find_element(By.XPATH, xpath + stub + "/div[3]/div[2]/div[1]/a")
-                        title_dir = "/div[3]/div[2]/div[1]/a/div/h3"
-                        log("Post has NO Tag.")
-        
-                    reddit.url = link.get_attribute("href")
-                    try:
-                        num = str(len(post_list))
-                        name = "download_" + num + ".mp4"
+                        log("Something wacky happened")
                         
-                        # cheeky redvid name override :)
-                        reddit.download(name)   
-                        log("Video extracted!")
-                        
-                        title = driver.find_element(By.XPATH, xpath + stub + title_dir)
-                        post_list.append({
-                            "title": title.text,
-                            "download": name,
-                            "upload": "upload_" + num + ".mp4",
-                        })
-                        
-                        vids += 1
-                    except:
-                        log("Failed! Wrong post type...")
-
                 i += 1
             log(" ")
         log(" ")
+        driver.quit()
 
         ### Edit scraped videos
         log("Begin edit")
@@ -193,7 +207,7 @@ while True:
                 
                 request_body = {
                     "snippet": {
-                        "title": title,
+                        "title": title if len(title) < 99 else title[0:98],
                         "description": title + " #shorts #ytshorts #youtube #trending",
                         "categoryId": 23,
                         "tags": ["shorts", "ytshorts", "trending", "comedy", "reddit", "safe", "friendly", "love", "youtube", "fun"]
@@ -242,7 +256,6 @@ while True:
             else:
                 log(download + " does not exist!!!")
 
-        driver.quit()
         log("Terminated.")
         
     log("Waiting...")
